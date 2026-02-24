@@ -1,0 +1,22 @@
+# PHP Storm
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.env
+
+# Database
+*.sql.backup
+
+# Logs
+*.log
+
+# Session
+session_*
+
+# Cache
+*.cache
