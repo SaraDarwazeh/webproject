@@ -1,0 +1,30 @@
+# PHP Storm / VS Code
+.idea/
+.vscode/
+
+# Agent metadata
+.agent/
+.gemini/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.env
+
+# Config with API keys (keep secret!)
+app/config/config.php
+
+# Database
+*.sql.backup
+
+# Logs
+*.log
+
+# Session
+session_*
+
+# Cache
+*.cache
