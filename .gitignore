@@ -14,9 +14,6 @@ Thumbs.db
 .env
 *.env
 
-# Config with API keys (keep secret!)
-app/config/config.php
-
 # Database
 *.sql.backup
 

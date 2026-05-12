@@ -10,7 +10,14 @@ class Database {
     private $conn;
 
     private function __construct() {
-        $this->conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        $port = defined('DB_PORT') ? DB_PORT : 3306;
+        $this->conn = mysqli_init();
+        
+        // Disable strict SSL certificate verification (XAMPP often lacks the CA bundle)
+        $this->conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
+        
+        // Aiven requires SSL, so we use real_connect with the MYSQLI_CLIENT_SSL flag
+        $this->conn->real_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, $port, null, MYSQLI_CLIENT_SSL);
 
         if ($this->conn->connect_error) {
             die('Database Connection Error: ' . $this->conn->connect_error);

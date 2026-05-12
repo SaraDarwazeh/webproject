@@ -9,10 +9,11 @@
 session_start();
 
 // Database
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'streamhive');
+define('DB_HOST', 'streamhive-web-streamhive.h.aivencloud.com');
+define('DB_USER', 'avnadmin');
+define('DB_PASS', 'REDACTED_DB_PASSWORD'); // Get this from your partner!
+define('DB_NAME', 'defaultdb');
+define('DB_PORT', 25234);
 
 // App
 define('APP_NAME', 'StreamHive');
