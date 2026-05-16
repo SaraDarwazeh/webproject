@@ -19,11 +19,16 @@ if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
 
 // Get real stats
 require_once '../../app/db/db.php';
+require_once '../../app/controllers/purchase_controller.php';
+
 $db = Database::getInstance();
+$purchaseCtrl = new PurchaseController();
+
 $movieCount = $db->fetchOne("SELECT COUNT(*) as c FROM movies")['c'] ?? 0;
 $userCount = $db->fetchOne("SELECT COUNT(*) as c FROM users")['c'] ?? 0;
 $ratingCount = $db->fetchOne("SELECT COUNT(*) as c FROM ratings")['c'] ?? 0;
 $listCount = $db->fetchOne("SELECT COUNT(*) as c FROM my_list")['c'] ?? 0;
+$adminStats = $purchaseCtrl->getAdminStats();
 ?>
 
 <main class="container-fluid py-5">
@@ -36,7 +41,8 @@ $listCount = $db->fetchOne("SELECT COUNT(*) as c FROM my_list")['c'] ?? 0;
             <a href="/streamhive/public/index.php" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Main Site</a>
         </div>
 
-        <div class="row mb-5">
+        <!-- Row 1: Original Stats -->
+        <div class="row mb-4">
             <div class="col-md-3 mb-3">
                 <div class="data-stat-card stat-primary">
                     <p class="stat-label">Total Movies</p>
@@ -67,6 +73,38 @@ $listCount = $db->fetchOne("SELECT COUNT(*) as c FROM my_list")['c'] ?? 0;
             </div>
         </div>
 
+        <!-- Row 2: Purchase/Subscription Stats -->
+        <div class="row mb-5">
+            <div class="col-md-3 mb-3">
+                <div class="data-stat-card" style="border-left: 4px solid #f1c40f;">
+                    <p class="stat-label">Revenue</p>
+                    <div class="stat-value" style="color: #f1c40f;">$<?php echo number_format($adminStats['revenue'], 2); ?></div>
+                    <p class="stat-description">Total subscriptions</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="data-stat-card" style="border-left: 4px solid #e67e22;">
+                    <p class="stat-label">Active Subs</p>
+                    <div class="stat-value" style="color: #e67e22;"><?php echo $adminStats['active_subscriptions']; ?></div>
+                    <p class="stat-description">Current subscribers</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="data-stat-card" style="border-left: 4px solid #1abc9c;">
+                    <p class="stat-label">Comments</p>
+                    <div class="stat-value" style="color: #1abc9c;"><?php echo $adminStats['total_comments']; ?></div>
+                    <p class="stat-description">Total posted</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="data-stat-card" style="border-left: 4px solid #9b59b6;">
+                    <p class="stat-label">Points</p>
+                    <div class="stat-value" style="color: #9b59b6;"><?php echo number_format($adminStats['points_in_circulation']); ?></div>
+                    <p class="stat-description">In circulation</p>
+                </div>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-md-6 mb-3">
                 <div class="card">
@@ -81,7 +119,7 @@ $listCount = $db->fetchOne("SELECT COUNT(*) as c FROM my_list")['c'] ?? 0;
                 <div class="card">
                     <div class="card-body">
                         <h5><i class="fas fa-users me-2 text-primary"></i>User Management</h5>
-                        <p class="text-muted small">Manage user accounts</p>
+                        <p class="text-muted small">Manage user accounts, subscriptions & points</p>
                         <a href="users.php" class="btn btn-primary"><i class="fas fa-arrow-right me-2"></i>Manage Users</a>
                     </div>
                 </div>
@@ -91,3 +129,4 @@ $listCount = $db->fetchOne("SELECT COUNT(*) as c FROM my_list")['c'] ?? 0;
 </main>
 
 <?php include '../../app/includes/footer.php'; ?>
+

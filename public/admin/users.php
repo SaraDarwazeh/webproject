@@ -29,9 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit;
 }
 
-$users = $db->fetchAll("SELECT u.*, 
+$users = $db->fetchAll("SELECT u.*,
     (SELECT COUNT(*) FROM my_list WHERE user_id = u.id) as list_count,
-    (SELECT COUNT(*) FROM ratings WHERE user_id = u.id) as rating_count
+    (SELECT COUNT(*) FROM ratings WHERE user_id = u.id) as rating_count,
+    (SELECT COUNT(*) FROM comments WHERE user_id = u.id) as comment_count,
+    (SELECT expires_at FROM subscriptions WHERE user_id = u.id AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1) as sub_expires
     FROM users u ORDER BY u.created_at DESC");
 ?>
 
@@ -55,8 +57,11 @@ $users = $db->fetchAll("SELECT u.*,
                             <th>Email</th>
                             <th>Joined</th>
                             <th>Status</th>
+                            <th>Points</th>
+                            <th>Subscription</th>
                             <th>Watchlist</th>
                             <th>Ratings</th>
+                            <th>Comments</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -75,8 +80,20 @@ $users = $db->fetchAll("SELECT u.*,
                                 ?>
                                 <span class="badge badge-soft-<?php echo $statusClass; ?>"><?php echo ucfirst($u['status']); ?></span>
                             </td>
+                            <td><strong><?php echo isset($u['points_balance']) ? $u['points_balance'] : 0; ?></strong></td>
+                            <td>
+                                <?php if ($u['is_admin']): ?>
+                                    <span class="text-muted">—</span>
+                                <?php elseif ($u['sub_expires']): ?>
+                                    <span class="badge bg-success">Active</span>
+                                    <small class="text-muted d-block"><?php echo date('M j', strtotime($u['sub_expires'])); ?></small>
+                                <?php else: ?>
+                                    <span class="badge badge-soft-secondary">None</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo $u['list_count']; ?></td>
                             <td><?php echo $u['rating_count']; ?></td>
+                            <td><?php echo $u['comment_count']; ?></td>
                             <td>
                                 <?php if (!$u['is_admin']): ?>
                                 <form method="POST" class="d-inline">
@@ -99,3 +116,4 @@ $users = $db->fetchAll("SELECT u.*,
 </main>
 
 <?php include '../../app/includes/footer.php'; ?>
+

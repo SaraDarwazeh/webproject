@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../../app/config/config.php';
 require_once __DIR__ . '/../../app/controllers/list_controller.php';
+require_once __DIR__ . '/../../app/controllers/purchase_controller.php';
 
 header('Content-Type: application/json');
 
@@ -24,6 +25,14 @@ $input = json_decode(file_get_contents('php://input'), true);
 $tmdbId = isset($input['tmdb_id']) ? intval($input['tmdb_id']) : 0;
 $rating = isset($input['rating']) ? intval($input['rating']) : 0;
 $mediaType = isset($input['media_type']) ? $input['media_type'] : 'movie';
+
+// Access gate: user must have purchased this content or be subscribed or be admin
+$purchaseCtrl = new PurchaseController();
+if (!$purchaseCtrl->hasAccess($_SESSION['user_id'], $tmdbId, $mediaType)) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Purchase or subscribe to rate this content']);
+    exit;
+}
 
 if ($tmdbId <= 0) {
     http_response_code(400);

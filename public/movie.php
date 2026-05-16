@@ -2,6 +2,10 @@
 $page_title = 'Details';
 include '../app/includes/header.php';
 include '../app/includes/navbar.php';
+
+$isLoggedIn = isset($_SESSION['user_id']);
+$isAdmin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'];
+$currentUserId = $isLoggedIn ? $_SESSION['user_id'] : 0;
 ?>
 
 <main id="movie-content">
@@ -12,6 +16,12 @@ include '../app/includes/navbar.php';
 </main>
 
 <script>
+// Pass PHP session info to JS
+const IS_LOGGED_IN = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
+const IS_ADMIN = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+const CURRENT_USER_ID = <?php echo $currentUserId; ?>;
+const CURRENT_USERNAME = '<?php echo $isLoggedIn ? htmlspecialchars($_SESSION['username'], ENT_QUOTES) : ''; ?>';
+
 document.addEventListener('DOMContentLoaded', async function() {
     const params = new URLSearchParams(window.location.search);
     const itemId = params.get('id');
@@ -56,6 +66,7 @@ async function renderDetails(item, mediaType) {
     const date = isTV ? item.first_air_date : item.release_date;
     const year = date ? date.split('-')[0] : 'N/A';
     const genres = item.genres ? item.genres.map(g => `<span class="genre-tag">${g.name}</span>`).join('') : '';
+    const mediaTypeLabel = isTV ? 'tv' : 'movie';
 
     // Runtime / Season info
     let durationInfo = '';
@@ -96,13 +107,26 @@ async function renderDetails(item, mediaType) {
         }).join('');
     }
 
-    // Get user rating
+    // Check access (purchase/subscription status)
+    let accessData = { logged_in: false, has_access: false, is_subscribed: false, is_purchased: false, is_admin: false, balance: 0 };
+    if (IS_LOGGED_IN) {
+        try {
+            const accessResp = await fetch(`/streamhive/app/api/purchase.php?action=check_access&tmdb_id=${item.id}&media_type=${mediaTypeLabel}`);
+            accessData = await accessResp.json();
+        } catch(e) {}
+    }
+
+    const hasAccess = accessData.has_access || IS_ADMIN;
+
+    // Get user rating (only if has access)
     let userRating = 0;
-    try {
-        const ratingData = await fetch('/streamhive/app/api/search.php?action=get_rating&tmdb_id=' + item.id);
-        const rd = await ratingData.json();
-        if (rd.logged_in) userRating = rd.rating;
-    } catch(e) {}
+    if (hasAccess) {
+        try {
+            const ratingData = await fetch('/streamhive/app/api/search.php?action=get_rating&tmdb_id=' + item.id);
+            const rd = await ratingData.json();
+            if (rd.logged_in) userRating = rd.rating;
+        } catch(e) {}
+    }
 
     // Check watchlist
     let inList = false;
@@ -135,7 +159,47 @@ async function renderDetails(item, mediaType) {
         }).join('');
     }
 
-    // Seasons section for TV — clickable tabs with episode details
+    // Build the purchase/access banner for the movie
+    let purchaseBannerHTML = '';
+    if (IS_LOGGED_IN && !hasAccess) {
+        purchaseBannerHTML = `
+        <div class="purchase-banner">
+            <div class="purchase-banner-content">
+                <i class="fas fa-lock"></i>
+                <div>
+                    <strong>Purchase to unlock ratings & comments</strong>
+                    <p class="mb-0 small text-muted">This ${isTV ? 'show' : 'movie'} costs <strong>${isTV ? '5 pts/episode' : '20 points'}</strong> · Your balance: <strong>${accessData.balance} pts</strong></p>
+                </div>
+            </div>
+            <div class="purchase-banner-actions">
+                ${!isTV ? `<button class="btn btn-primary" onclick="purchaseContent(${item.id}, '${mediaTypeLabel}')"><i class="fas fa-shopping-cart me-2"></i>Purchase (20 pts)</button>` : ''}
+                <a href="/streamhive/public/subscribe.php" class="btn btn-outline-warning"><i class="fas fa-crown me-2"></i>Subscribe</a>
+                <a href="/streamhive/public/buy_points.php" class="btn btn-outline-primary btn-sm"><i class="fas fa-gem me-1"></i>Buy Points</a>
+            </div>
+        </div>`;
+    }
+
+    // Rating section — show interactive stars only if has access
+    let ratingHTML = '';
+    if (hasAccess) {
+        ratingHTML = `
+        <div class="user-rating-section">
+            <h4><i class="fas fa-star me-2"></i>Rate This ${isTV ? 'Show' : 'Movie'}</h4>
+            <div class="star-rating" id="star-rating">
+                ${[1,2,3,4,5].map(i => `
+                    <span class="star-input ${i <= userRating ? 'active' : ''}" onclick="rateMovie(${item.id}, ${i}, '${mediaTypeLabel}')" title="${i} star${i>1?'s':''}">★</span>
+                `).join('')}
+            </div>
+        </div>`;
+    } else if (IS_LOGGED_IN) {
+        ratingHTML = `
+        <div class="user-rating-section locked-section">
+            <h4><i class="fas fa-lock me-2"></i>Rating Locked</h4>
+            <p class="text-muted small mb-0">Purchase this content or subscribe to rate it</p>
+        </div>`;
+    }
+
+    // Seasons section for TV
     let seasonsHTML = '';
     if (isTV && item.seasons && item.seasons.length > 0) {
         const validSeasons = item.seasons.filter(s => s.season_number > 0);
@@ -157,8 +221,8 @@ async function renderDetails(item, mediaType) {
 
     // Store show ID for season loading
     window.currentShowId = item.id;
-
-    const mediaTypeLabel = isTV ? 'tv' : 'movie';
+    window.currentMediaType = mediaTypeLabel;
+    window.currentHasAccess = hasAccess;
 
     document.getElementById('movie-content').innerHTML = `
         <!-- Backdrop -->
@@ -167,6 +231,7 @@ async function renderDetails(item, mediaType) {
         <!-- Details -->
         <section class="movie-details-section">
             <div class="container">
+                ${purchaseBannerHTML}
                 <div class="movie-details-grid">
                     <!-- Poster -->
                     <div class="movie-poster-col">
@@ -184,6 +249,7 @@ async function renderDetails(item, mediaType) {
                             <span class="meta-badge">${durationInfo}</span>
                             ${statusBadge}
                             <span class="meta-badge media-type-badge ${isTV ? 'tv-badge' : 'movie-badge'}">${isTV ? 'TV Series' : 'Movie'}</span>
+                            ${hasAccess && IS_LOGGED_IN ? '<span class="meta-badge access-badge"><i class="fas fa-unlock me-1"></i>Owned</span>' : ''}
                         </div>
 
                         <div class="genre-tags">${genres}</div>
@@ -197,15 +263,7 @@ async function renderDetails(item, mediaType) {
                             </button>
                         </div>
 
-                        <!-- Rating -->
-                        <div class="user-rating-section">
-                            <h4><i class="fas fa-star me-2"></i>Rate This ${isTV ? 'Show' : 'Movie'}</h4>
-                            <div class="star-rating" id="star-rating">
-                                ${[1,2,3,4,5].map(i => `
-                                    <span class="star-input ${i <= userRating ? 'active' : ''}" onclick="rateMovie(${item.id}, ${i}, '${mediaTypeLabel}')" title="${i} star${i>1?'s':''}">★</span>
-                                `).join('')}
-                            </div>
-                        </div>
+                        ${ratingHTML}
                     </div>
                 </div>
             </div>
@@ -224,6 +282,40 @@ async function renderDetails(item, mediaType) {
         <!-- Seasons (TV only) -->
         ${seasonsHTML}
 
+        <!-- Comments Section -->
+        <section class="comments-section">
+            <div class="container">
+                <h2 class="section-title"><i class="fas fa-comments me-2"></i>Comments</h2>
+                ${IS_LOGGED_IN && hasAccess ? `
+                <div class="comment-form-card">
+                    <div class="d-flex gap-3">
+                        <div class="user-avatar-sm comment-avatar">${CURRENT_USERNAME.charAt(0).toUpperCase()}</div>
+                        <div class="flex-grow-1">
+                            <textarea class="form-control" id="comment-input" placeholder="Write a comment..." rows="3" maxlength="2000"></textarea>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted"><span id="comment-char-count">0</span>/2000</small>
+                                <button class="btn btn-primary" onclick="postComment(${item.id}, '${mediaTypeLabel}')"><i class="fas fa-paper-plane me-2"></i>Post Comment</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ` : IS_LOGGED_IN ? `
+                <div class="comment-locked-notice">
+                    <i class="fas fa-lock me-2"></i>
+                    <span>Purchase this content or <a href="/streamhive/public/subscribe.php">subscribe</a> to post comments</span>
+                </div>
+                ` : `
+                <div class="comment-locked-notice">
+                    <i class="fas fa-sign-in-alt me-2"></i>
+                    <span><a href="/streamhive/public/login.php">Sign in</a> to post comments</span>
+                </div>
+                `}
+                <div id="comments-list">
+                    <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Similar -->
         ${similarHTML ? `
         <section class="similar-section">
@@ -236,6 +328,17 @@ async function renderDetails(item, mediaType) {
     `;
 
     document.title = title + ' - StreamHive';
+
+    // Character count for comment input
+    const commentInput = document.getElementById('comment-input');
+    if (commentInput) {
+        commentInput.addEventListener('input', () => {
+            document.getElementById('comment-char-count').textContent = commentInput.value.length;
+        });
+    }
+
+    // Load comments
+    loadComments(item.id, mediaTypeLabel);
 
     // Auto-load first season for TV shows
     if (isTV && item.seasons && item.seasons.filter(s => s.season_number > 0).length > 0) {
@@ -257,21 +360,42 @@ async function loadSeasonEpisodes(showId, seasonNumber, clickedTab) {
 
     try {
         const data = await fetchTMDB('tv_season', { id: showId, season: seasonNumber });
-        
+
         if (!data.episodes || data.episodes.length === 0) {
             container.innerHTML = '<p class="text-muted text-center py-4">No episodes found for this season.</p>';
             return;
         }
 
+        // Fetch purchased episodes for this season
+        let purchasedEps = [];
+        let isSub = false;
+        let isAdm = IS_ADMIN;
+        if (IS_LOGGED_IN) {
+            try {
+                const pepResp = await fetch(`/streamhive/app/api/purchase.php?action=get_purchased_episodes&tmdb_id=${showId}&season=${seasonNumber}`);
+                const pepData = await pepResp.json();
+                purchasedEps = pepData.episodes || [];
+                isSub = pepData.is_subscribed || false;
+                isAdm = pepData.is_admin || IS_ADMIN;
+            } catch(e) {}
+        }
+
         let html = '';
         data.episodes.forEach(ep => {
-            const still = ep.still_path 
-                ? `https://image.tmdb.org/t/p/w300${ep.still_path}` 
+            const still = ep.still_path
+                ? `https://image.tmdb.org/t/p/w300${ep.still_path}`
                 : '';
             const airDate = ep.air_date || '';
             const rating = ep.vote_average ? ep.vote_average.toFixed(1) : '';
             const overview = ep.overview || 'No description available.';
-            
+
+            const epOwned = isAdm || isSub || purchasedEps.includes(ep.episode_number);
+            const purchaseBtn = IS_LOGGED_IN && !epOwned
+                ? `<button class="btn btn-sm btn-outline-primary episode-purchase-btn" onclick="purchaseEpisode(${showId}, ${seasonNumber}, ${ep.episode_number})"><i class="fas fa-shopping-cart me-1"></i>5 pts</button>`
+                : epOwned && IS_LOGGED_IN
+                ? `<span class="episode-owned-badge"><i class="fas fa-unlock me-1"></i>Owned</span>`
+                : '';
+
             html += `
                 <div class="episode-card">
                     <div class="episode-still" ${still ? `style="background-image: url(${still})"` : ''}>
@@ -279,7 +403,10 @@ async function loadSeasonEpisodes(showId, seasonNumber, clickedTab) {
                         <span class="episode-number">E${ep.episode_number}</span>
                     </div>
                     <div class="episode-info">
-                        <h5 class="episode-title">${ep.episode_number}. ${ep.name || 'Episode ' + ep.episode_number}</h5>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="episode-title">${ep.episode_number}. ${ep.name || 'Episode ' + ep.episode_number}</h5>
+                            ${purchaseBtn}
+                        </div>
                         <div class="episode-meta">
                             ${airDate ? `<span><i class="fas fa-calendar-alt me-1"></i>${airDate}</span>` : ''}
                             ${ep.runtime ? `<span><i class="fas fa-clock me-1"></i>${ep.runtime}m</span>` : ''}
@@ -295,7 +422,154 @@ async function loadSeasonEpisodes(showId, seasonNumber, clickedTab) {
         container.innerHTML = '<p class="text-danger text-center py-4">Failed to load episodes. Please try again.</p>';
     }
 }
+
+// Purchase content (movie or show)
+async function purchaseContent(tmdbId, mediaType) {
+    try {
+        const response = await fetch('/streamhive/app/api/purchase.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'purchase_movie', tmdb_id: tmdbId, media_type: mediaType })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Update navbar balance
+            const navBal = document.getElementById('nav-points-balance');
+            if (navBal) navBal.textContent = data.balance;
+            // Reload page to reflect new access
+            setTimeout(() => window.location.reload(), 1000);
+        } else if (data.need_points) {
+            showToast(data.message, 'warning');
+            setTimeout(() => window.location.href = '/streamhive/public/buy_points.php', 1500);
+        } else {
+            showToast(data.message, 'danger');
+        }
+    } catch(e) {
+        showToast('Purchase failed', 'danger');
+    }
+}
+
+// Purchase single episode
+async function purchaseEpisode(tmdbId, season, episode) {
+    try {
+        const response = await fetch('/streamhive/app/api/purchase.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'purchase_episode', tmdb_id: tmdbId, season: season, episode: episode })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            const navBal = document.getElementById('nav-points-balance');
+            if (navBal) navBal.textContent = data.balance;
+            // Reload season to show updated state
+            loadSeasonEpisodes(tmdbId, season);
+        } else if (data.need_points) {
+            showToast(data.message, 'warning');
+            setTimeout(() => window.location.href = '/streamhive/public/buy_points.php', 1500);
+        } else {
+            showToast(data.message, 'danger');
+        }
+    } catch(e) {
+        showToast('Purchase failed', 'danger');
+    }
+}
+
+// Load comments for this content
+async function loadComments(tmdbId, mediaType) {
+    const container = document.getElementById('comments-list');
+    try {
+        const resp = await fetch(`/streamhive/app/api/comments.php?tmdb_id=${tmdbId}&media_type=${mediaType}`);
+        const data = await resp.json();
+        const comments = data.comments || [];
+
+        if (comments.length === 0) {
+            container.innerHTML = '<div class="no-comments"><i class="fas fa-comment-slash"></i><p class="text-muted">No comments yet. Be the first to share your thoughts!</p></div>';
+            return;
+        }
+
+        container.innerHTML = comments.map(c => {
+            const initial = c.username ? c.username.charAt(0).toUpperCase() : '?';
+            const date = new Date(c.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            const canDelete = (c.user_id == CURRENT_USER_ID) || IS_ADMIN;
+            const adminBadge = c.is_admin ? '<span class="comment-admin-badge"><i class="fas fa-shield-alt"></i> Admin</span>' : '';
+
+            return `
+            <div class="comment-card" id="comment-${c.id}">
+                <div class="comment-header">
+                    <div class="user-avatar-sm comment-avatar">${initial}</div>
+                    <div>
+                        <strong>${c.username}</strong> ${adminBadge}
+                        <span class="comment-date">${date}</span>
+                    </div>
+                    ${canDelete ? `<button class="comment-delete-btn" onclick="deleteComment(${c.id})" title="Delete comment"><i class="fas fa-trash-alt"></i></button>` : ''}
+                </div>
+                <div class="comment-body">${escapeHtml(c.content)}</div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        container.innerHTML = '<p class="text-muted text-center">Failed to load comments</p>';
+    }
+}
+
+// Post a comment
+async function postComment(tmdbId, mediaType) {
+    const input = document.getElementById('comment-input');
+    const content = input.value.trim();
+    if (!content) {
+        showToast('Comment cannot be empty', 'warning');
+        return;
+    }
+
+    try {
+        const resp = await fetch('/streamhive/app/api/comments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tmdb_id: tmdbId, media_type: mediaType, content: content })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('Comment posted!', 'success');
+            input.value = '';
+            document.getElementById('comment-char-count').textContent = '0';
+            loadComments(tmdbId, mediaType);
+        } else {
+            showToast(data.message, 'danger');
+        }
+    } catch(e) {
+        showToast('Failed to post comment', 'danger');
+    }
+}
+
+// Delete a comment
+async function deleteComment(commentId) {
+    if (!confirm('Delete this comment?')) return;
+
+    try {
+        const resp = await fetch(`/streamhive/app/api/comments.php?id=${commentId}`, { method: 'DELETE' });
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('Comment deleted', 'success');
+            const el = document.getElementById('comment-' + commentId);
+            if (el) el.remove();
+        } else {
+            showToast(data.message, 'danger');
+        }
+    } catch(e) {
+        showToast('Failed to delete comment', 'danger');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 </script>
 
 <?php include '../app/includes/footer.php'; ?>
-

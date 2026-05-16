@@ -41,6 +41,7 @@ class AuthController {
         $_SESSION['username'] = $user['username'];
         $_SESSION['email'] = $user['email'];
         $_SESSION['is_admin'] = $user['is_admin'];
+        $_SESSION['points_balance'] = isset($user['points_balance']) ? (int)$user['points_balance'] : 0;
 
         return ['success' => true, 'message' => 'Login successful'];
     }
@@ -105,6 +106,7 @@ class AuthController {
             $_SESSION['username'] = $username;
             $_SESSION['email'] = $email;
             $_SESSION['is_admin'] = false;
+            $_SESSION['points_balance'] = 0;
 
             return ['success' => true, 'message' => 'Account created successfully'];
         }
@@ -143,7 +145,8 @@ class AuthController {
             'id' => $_SESSION['user_id'],
             'username' => $_SESSION['username'],
             'email' => $_SESSION['email'],
-            'is_admin' => $_SESSION['is_admin']
+            'is_admin' => $_SESSION['is_admin'],
+            'points_balance' => $_SESSION['points_balance'] ?? 0
         ];
     }
 }
