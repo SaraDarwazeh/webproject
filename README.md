@@ -1,100 +1,210 @@
-# StreamHive - Academic Streaming Platform
+# StreamHive — Full Stack Streaming Platform
 
-StreamHive is a minimal academic project that demonstrates a streaming platform concept similar to Netflix. Built with vanilla HTML, CSS, JavaScript, PHP, and MySQL.
+StreamHive is a full-stack academic streaming platform inspired by modern services like Netflix.  
+The project demonstrates frontend and backend integration using PHP, MySQL, Vanilla JavaScript, AJAX APIs, and TMDB API integration.
 
-## Project Overview
+---
 
-This is an educational project designed to showcase:
-- Responsive web design with Bootstrap 5
-- AJAX functionality with Fetch API
-- PHP backend structure
-- MySQL database design
-- RESTful API concepts
+# Team Members
 
-## Tech Stack
+- Sara Darwazeh
+- Mohammad Darawsheh
 
-- **Frontend:** HTML5, CSS3, JavaScript (Vanilla)
-- **UI Framework:** Bootstrap 5 (CDN)
-- **Backend:** PHP
-- **Database:** MySQL (placeholders)
-- **HTTP Client:** Fetch API
+---
 
-## Features
+# Features
 
-- User authentication (UI only)
-- Browse movies by categories (Trending, New Releases, Top Rated)
-- Movie details and ratings
-- Personal My List / watchlist
-- Live search functionality
-- Admin dashboard (UI only)
-- Responsive design (mobile, tablet, desktop)
-- Dark theme with teal/purple accents
+## Authentication System
+- User registration and login
+- Session-based authentication
+- Secure password hashing
+- Protected routes and admin authorization
 
-## Project Structure
+## Movie Platform Features
+- Browse trending and top-rated movies
+- Dynamic movie details pages
+- Search movies using AJAX
+- Personal watchlist (“My List”)
+- Movie rating system
+- Responsive UI for desktop and mobile
 
+## Admin Dashboard
+- Admin-only dashboard access
+- User management system
+- Suspend / activate / delete users
+- Live database statistics
+
+## TMDB API Integration
+- Real TMDB API integration
+- Backend API proxy using PHP
+- Dynamic movie and poster fetching
+
+## Database Features
+- MySQL database persistence
+- Users, ratings, and watchlists stored permanently
+- Prepared statements for secure queries
+
+---
+
+# Tech Stack
+
+## Frontend
+- HTML5
+- CSS3
+- Bootstrap 5
+- Vanilla JavaScript
+- Fetch API / AJAX
+
+## Backend
+- PHP
+
+## Database
+- MySQL (Aiven hosted database)
+
+## APIs
+- TMDB API
+
+---
+
+# Project Architecture
+
+```text
+Browser
+   ↓
+JavaScript (AJAX / Fetch API)
+   ↓
+PHP API Endpoints
+   ↓
+MySQL Database / TMDB API
+   ↓
+Dynamic Frontend Rendering
 ```
+
+---
+
+# Project Structure
+
+```text
 streamhive/
-├── README.md                 # This file
-├── .gitignore               # Git ignore rules
-├── public/                  # Web root
-│   ├── index.php           # Home page
-│   ├── login.php           # Login page
-│   ├── register.php        # Registration page
-│   ├── profile.php         # User profile
-│   ├── movie.php           # Movie details
-│   ├── mylist.php          # My List / Watchlist
-│   ├── search.php          # Search page
-│   ├── admin/              # Admin dashboard
-│   │   ├── index.php       # Admin home
-│   │   ├── movies.php      # Manage movies
-│   │   └── users.php       # Manage users
+├── public/
+│   ├── index.php
+│   ├── login.php
+│   ├── register.php
+│   ├── movie.php
+│   ├── mylist.php
+│   ├── search.php
+│   ├── admin/
 │   └── assets/
-│       ├── css/
-│       │   └── style.css   # Custom styles
-│       ├── js/
-│       │   ├── main.js     # Main JS
-│       │   └── ajax.js     # AJAX functions
-│       └── img/
-│           ├── logo.svg    # Brand logo
-│           └── posters/    # Movie posters
 ├── app/
 │   ├── config/
-│   │   └── config.php      # Configuration
 │   ├── db/
-│   │   └── db.php          # Database connection
-│   ├── includes/
-│   │   ├── header.php      # Header template
-│   │   ├── navbar.php      # Navigation bar
-│   │   └── footer.php      # Footer template
 │   ├── controllers/
-│   │   ├── auth_controller.php
-│   │   ├── movie_controller.php
-│   │   └── list_controller.php
+│   ├── includes/
 │   └── api/
-│       ├── search.php      # Search API
-│       ├── toggle_list.php # Add/Remove watchlist
-│       └── rate.php        # Rating API
-└── sql/
-    └── schema.sql          # Database schema
-
+├── sql/
+└── README.md
 ```
 
-## Installation
+---
+
+# Installation
+
+## Requirements
+- PHP
+- Apache
+- MySQL
+- XAMPP (recommended)
+
+---
+
+## Setup Instructions
 
 1. Clone the repository
-2. Set up MySQL database (see `sql/schema.sql`)
-3. Configure database connection in `app/config/config.php`
-4. Place project in web server root
-5. Access via `http://localhost/streamhive/public/`
 
-## Notes
+2. Place the project inside:
 
-- This project contains placeholder content for educational purposes
-- Database functionality is not yet implemented
-- Authentication is UI-only
-- All movie data is mock/hardcoded
+```text
+xampp/htdocs/streamhive
+```
 
-## License
+3. Start Apache and MySQL using XAMPP
 
-Academic Project - Educational Use Only
+4. Configure database credentials inside:
 
+```text
+app/config/config.php
+```
+
+5. Import the database schema:
+
+```text
+sql/schema.sql
+```
+
+6. Open the project:
+
+```text
+http://localhost/streamhive/public
+```
+
+---
+
+# AJAX / API System
+
+The frontend communicates with PHP backend endpoints using Fetch API and AJAX.
+
+Main APIs include:
+- TMDB Proxy API
+- Search API
+- Watchlist API
+- Rating API
+
+Main AJAX logic:
+```text
+public/assets/js/ajax.js
+```
+
+---
+
+# Authentication Flow
+
+```text
+Login/Register
+   ↓
+PHP Controllers
+   ↓
+Database Verification
+   ↓
+PHP Sessions
+   ↓
+Protected Routes
+```
+
+---
+
+# Security Practices
+
+- Prepared SQL statements
+- Password hashing
+- Session protection
+- Admin authorization checks
+- Hidden API credentials
+
+---
+
+# Educational Goals
+
+This project demonstrates:
+- Full-stack web development
+- AJAX-driven applications
+- REST-style backend APIs
+- Authentication systems
+- Database persistence
+- Third-party API integration
+- Secure backend development
+
+---
+
+# License
+
+Academic Project — Educational Use Only
