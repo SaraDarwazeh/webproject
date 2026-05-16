@@ -1322,3 +1322,216 @@ hr { border-color: var(--border-color); }
     .subscription-plans-grid { grid-template-columns: 1fr; }
     .points-packages-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ============ WATCH PAGE & JELLYFIN STREAMING ============ */
+
+/* Watch Now button on movie detail page */
+.watch-now-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    border: none !important;
+    color: #fff !important;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    padding: 12px 28px;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+.watch-now-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.watch-now-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.45);
+    color: #fff !important;
+}
+.watch-now-btn:hover::before { opacity: 1; }
+.watch-now-btn .btn-pulse {
+    width: 8px; height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.6); }
+}
+
+.watch-now-btn.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    filter: grayscale(0.5);
+}
+
+/* Episode play button (inline on episode cards) */
+.episode-play-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff !important;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.episode-play-btn:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(231,76,60,0.3);
+    color: #fff !important;
+}
+
+/* Jellyfin badge on detail page */
+.jellyfin-stream-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.25);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* ============ WATCH PAGE LAYOUT ============ */
+.watch-page {
+    min-height: 100vh;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+}
+
+.player-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.4));
+    position: relative;
+    z-index: 10;
+}
+.player-back-btn {
+    color: var(--text-secondary) !important;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+.player-back-btn:hover {
+    color: #fff !important;
+    background: rgba(255,255,255,0.08);
+}
+.player-title-info {
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+}
+.player-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.player-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: block;
+}
+.player-header-spacer {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.video-player-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: #000;
+    min-height: 0;
+}
+.video-player {
+    width: 100%;
+    max-height: calc(100vh - 140px);
+    background: #000;
+    outline: none;
+}
+
+.video-error-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    gap: 16px;
+}
+.video-error-overlay i {
+    font-size: 2.5rem;
+    color: #e74c3c;
+    opacity: 0.7;
+}
+
+/* Episode navigation at the bottom of watch page */
+.episode-nav {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: rgba(10, 10, 10, 0.95);
+    border-top: 1px solid var(--border-color);
+}
+.episode-nav-btn {
+    color: var(--primary) !important;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+}
+.episode-nav-btn:hover {
+    background: rgba(32,201,151,0.1);
+    border-color: var(--primary);
+    color: var(--primary) !important;
+}
+
+/* ============ WATCH PAGE RESPONSIVE ============ */
+@media (max-width: 768px) {
+    .player-header { padding: 12px 16px; }
+    .player-title { font-size: 1rem; }
+    .player-header-spacer { width: 0; display: none; }
+    .episode-nav { flex-direction: column; gap: 8px; padding: 12px 16px; }
+    .episode-nav-btn { justify-content: center; }
+}

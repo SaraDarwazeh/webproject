@@ -40,7 +40,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
-        renderDetails(item, mediaType);
+        await renderDetails(item, mediaType);
+
+        // Check Jellyfin availability for this title (non-blocking)
+        checkJellyfinAvailability(item.id, mediaType);
     } catch(e) {
         document.getElementById('movie-content').innerHTML = errorPage('Failed to load details');
     }
@@ -257,6 +260,7 @@ async function renderDetails(item, mediaType) {
                         <p class="movie-overview">${item.overview || 'No overview available.'}</p>
 
                         <div class="movie-actions">
+                            <span id="jellyfin-watch-btn-slot"></span>
                             ${trailerKey ? `<a href="https://www.youtube.com/watch?v=${trailerKey}" target="_blank" class="btn btn-primary btn-lg"><i class="fas fa-play me-2"></i>Watch Trailer</a>` : ''}
                             <button onclick="toggleWatchlist(${item.id}, '${mediaTypeLabel}')" class="btn btn-outline-primary btn-lg" id="watchlist-btn">
                                 <i class="fas fa-${inList ? 'check' : 'plus'} me-2"></i><span>${inList ? 'In Watchlist' : 'Add to List'}</span>
@@ -390,6 +394,9 @@ async function loadSeasonEpisodes(showId, seasonNumber, clickedTab) {
             const overview = ep.overview || 'No description available.';
 
             const epOwned = isAdm || isSub || purchasedEps.includes(ep.episode_number);
+            const playBtn = epOwned && IS_LOGGED_IN && window.jellyfinAvailable
+                ? `<a href="/streamhive/public/watch.php?tmdb_id=${showId}&type=tv&season=${seasonNumber}&episode=${ep.episode_number}" class="episode-play-btn"><i class="fas fa-play"></i>Play</a>`
+                : '';
             const purchaseBtn = IS_LOGGED_IN && !epOwned
                 ? `<button class="btn btn-sm btn-outline-primary episode-purchase-btn" onclick="purchaseEpisode(${showId}, ${seasonNumber}, ${ep.episode_number})"><i class="fas fa-shopping-cart me-1"></i>5 pts</button>`
                 : epOwned && IS_LOGGED_IN
@@ -403,9 +410,9 @@ async function loadSeasonEpisodes(showId, seasonNumber, clickedTab) {
                         <span class="episode-number">E${ep.episode_number}</span>
                     </div>
                     <div class="episode-info">
-                        <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex justify-content-between align-items-start" style="gap: 8px;">
                             <h5 class="episode-title">${ep.episode_number}. ${ep.name || 'Episode ' + ep.episode_number}</h5>
-                            ${purchaseBtn}
+                            <div class="d-flex gap-2 align-items-center">${playBtn}${purchaseBtn}</div>
                         </div>
                         <div class="episode-meta">
                             ${airDate ? `<span><i class="fas fa-calendar-alt me-1"></i>${airDate}</span>` : ''}
@@ -569,6 +576,83 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// --- Jellyfin Streaming Integration ---
+window.jellyfinAvailable = false;
+
+async function checkJellyfinAvailability(tmdbId, mediaType) {
+    console.log('[Jellyfin] Checking availability for TMDB ID:', tmdbId, 'type:', mediaType);
+    try {
+        const resp = await fetch(`/streamhive/app/api/jellyfin.php?action=check&tmdb_id=${tmdbId}`);
+        const data = await resp.json();
+        console.log('[Jellyfin] API response:', data);
+
+        if (!data.available) {
+            console.log('[Jellyfin] Not available, skipping');
+            return;
+        }
+
+        window.jellyfinAvailable = true;
+        const mediaTypeLabel = mediaType === 'tv' ? 'tv' : 'movie';
+        console.log('[Jellyfin] mediaTypeLabel:', mediaTypeLabel);
+
+        // Inject the Watch Now button
+        const slot = document.getElementById('jellyfin-watch-btn-slot');
+        console.log('[Jellyfin] Slot element:', slot);
+        console.log('[Jellyfin] hasAccess:', window.currentHasAccess, 'IS_LOGGED_IN:', IS_LOGGED_IN);
+
+        if (slot) {
+            const hasAccess = window.currentHasAccess;
+
+            if (mediaTypeLabel === 'movie') {
+                if (hasAccess) {
+                    slot.innerHTML = `
+                        <a href="/streamhive/public/watch.php?tmdb_id=${tmdbId}&type=movie" class="watch-now-btn btn-lg">
+                            <span class="btn-pulse"></span>
+                            <i class="fas fa-play"></i>Watch Now
+                        </a>`;
+                    console.log('[Jellyfin] Injected Watch Now (movie, has access)');
+                } else if (IS_LOGGED_IN) {
+                    slot.innerHTML = `
+                        <span class="watch-now-btn btn-lg disabled" title="Purchase or subscribe to watch">
+                            <i class="fas fa-lock"></i>Watch Now
+                        </span>`;
+                    console.log('[Jellyfin] Injected locked Watch Now (movie, no access)');
+                } else {
+                    console.log('[Jellyfin] Not logged in, skipping movie button');
+                }
+            } else if (mediaTypeLabel === 'tv') {
+                if (hasAccess) {
+                    slot.innerHTML = `
+                        <a href="/streamhive/public/watch.php?tmdb_id=${tmdbId}&type=tv&season=1&episode=1" class="watch-now-btn btn-lg">
+                            <span class="btn-pulse"></span>
+                            <i class="fas fa-play"></i>Start Watching — S01E01
+                        </a>`;
+                    console.log('[Jellyfin] Injected Start Watching (tv, has access)');
+                } else if (IS_LOGGED_IN) {
+                    slot.innerHTML = `
+                        <span class="watch-now-btn btn-lg disabled" title="Purchase episodes or subscribe to watch">
+                            <i class="fas fa-lock"></i>Start Watching
+                        </span>`;
+                    console.log('[Jellyfin] Injected locked Start Watching (tv, no access)');
+                } else {
+                    console.log('[Jellyfin] Not logged in, skipping tv button');
+                }
+            }
+        } else {
+            console.log('[Jellyfin] ERROR: slot element not found in DOM!');
+        }
+
+        // For TV: if episodes are already loaded, re-trigger the active season
+        // to refresh play buttons (they check window.jellyfinAvailable)
+        if (mediaTypeLabel === 'tv') {
+            const activeTab = document.querySelector('.season-tab.active');
+            if (activeTab) activeTab.click();
+        }
+    } catch(e) {
+        console.error('[Jellyfin] Error in checkJellyfinAvailability:', e);
+    }
 }
 </script>
 
