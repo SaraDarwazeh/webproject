@@ -24,9 +24,28 @@ The project demonstrates frontend and backend integration using PHP, MySQL, Vani
 - Browse trending and top-rated movies
 - Dynamic movie details pages
 - Search movies using AJAX
-- Personal watchlist (“My List”)
-- Movie rating system
+- Personal watchlist ("My List")
+- Movie rating and commenting system
 - Responsive UI for desktop and mobile
+
+## Subscription & Points System
+- Points-based content purchasing
+- Subscription plans for unlimited access
+- Transaction history per user
+- Access-gated features (rating, commenting) for subscribers
+- Admin analytics for subscriptions and revenue
+
+## Jellyfin Streaming Integration (Proof of Concept)
+- Local Jellyfin media server integration for actual video playback
+- Mapped TMDB content to Jellyfin library items via a config-driven content map
+- In-browser video player with full playback controls
+- TV series support: season/episode browsing and per-episode streaming
+- Access control enforced through the subscription/purchase system
+- PHP API bridge proxies requests between the frontend and Jellyfin
+
+> **Note:** This is a proof of concept. The Jellyfin server runs locally, so streaming
+> is only available on the machine hosting Jellyfin. A production deployment would
+> use a publicly accessible media server or a tunneling service (e.g. Tailscale).
 
 ## Admin Dashboard
 - Admin-only dashboard access
@@ -41,7 +60,7 @@ The project demonstrates frontend and backend integration using PHP, MySQL, Vani
 
 ## Database Features
 - MySQL database persistence
-- Users, ratings, and watchlists stored permanently
+- Users, ratings, watchlists, and transactions stored permanently
 - Prepared statements for secure queries
 
 ---
@@ -61,8 +80,12 @@ The project demonstrates frontend and backend integration using PHP, MySQL, Vani
 ## Database
 - MySQL (Aiven hosted database)
 
+## Media Server
+- Jellyfin (local, proof of concept)
+
 ## APIs
 - TMDB API
+- Jellyfin API (local bridge)
 
 ---
 
@@ -75,7 +98,7 @@ JavaScript (AJAX / Fetch API)
    ↓
 PHP API Endpoints
    ↓
-MySQL Database / TMDB API
+MySQL Database / TMDB API / Jellyfin Server
    ↓
 Dynamic Frontend Rendering
 ```
@@ -93,14 +116,19 @@ streamhive/
 │   ├── movie.php
 │   ├── mylist.php
 │   ├── search.php
+│   ├── watch.php              ← Video player page (Jellyfin PoC)
 │   ├── admin/
 │   └── assets/
 ├── app/
 │   ├── config/
+│   │   ├── config.php
+│   │   └── jellyfin_config.php ← Jellyfin content map
 │   ├── db/
 │   ├── controllers/
 │   ├── includes/
 │   └── api/
+│       ├── tmdb.php
+│       └── jellyfin.php        ← Jellyfin API bridge
 ├── sql/
 └── README.md
 ```
@@ -114,6 +142,7 @@ streamhive/
 - Apache
 - MySQL
 - XAMPP (recommended)
+- Jellyfin Server (optional, for streaming PoC)
 
 ---
 
@@ -147,6 +176,15 @@ sql/schema.sql
 http://localhost/streamhive/public
 ```
 
+### Jellyfin Setup (Optional)
+
+To enable video playback for the proof of concept:
+
+1. Install and run [Jellyfin](https://jellyfin.org/) on the same machine
+2. Add your media library in Jellyfin
+3. Generate an API key in Jellyfin Dashboard → API Keys
+4. Update `app/config/jellyfin_config.php` with your API key and content IDs
+
 ---
 
 # AJAX / API System
@@ -158,6 +196,8 @@ Main APIs include:
 - Search API
 - Watchlist API
 - Rating API
+- Jellyfin Bridge API (stream URLs, seasons, episodes)
+- Purchase / Subscription API
 
 Main AJAX logic:
 ```text
@@ -201,6 +241,7 @@ This project demonstrates:
 - Authentication systems
 - Database persistence
 - Third-party API integration
+- Media server integration
 - Secure backend development
 
 ---
