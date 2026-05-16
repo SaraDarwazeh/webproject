@@ -37,6 +37,25 @@ include '../app/includes/navbar.php';
 
 <!-- CONTENT ROWS -->
 <main class="movies-section">
+
+    <!-- Proof of Concept: Available to Watch -->
+    <section class="movie-row-section poc-section" id="poc-section">
+        <div class="container-fluid px-4">
+            <div class="section-header">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h2 class="section-title mb-0">
+                        <i class="fas fa-play-circle me-2" style="color: #e74c3c;"></i>Available to Watch
+                    </h2>
+                    <span class="poc-badge">PROOF OF CONCEPT</span>
+                </div>
+                <p class="section-subtitle">Stream these titles directly — powered by Jellyfin</p>
+            </div>
+            <div class="movie-scroll-container" id="poc-row">
+                <div class="loading-skeleton"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </section>
+
     <!-- Trending Movies -->
     <section class="movie-row-section">
         <div class="container-fluid px-4">
@@ -117,7 +136,79 @@ include '../app/includes/navbar.php';
 </main>
 
 <script>
+/**
+ * Proof-of-concept Jellyfin titles (TMDB IDs + types).
+ * These are the only titles available for actual streaming.
+ */
+const POC_TITLES = [
+    { tmdb_id: 1396,   type: 'tv'    },  // Breaking Bad
+    { tmdb_id: 60059,  type: 'tv'    },  // Better Call Saul
+    { tmdb_id: 361743, type: 'movie' },  // Top Gun: Maverick
+    { tmdb_id: 592834, type: 'movie' },  // El Camino
+    { tmdb_id: 807,    type: 'movie' },  // Se7en
+];
+
+/**
+ * Load the PoC row by fetching TMDB metadata for each title.
+ */
+async function loadPocRow() {
+    const container = document.getElementById('poc-row');
+    if (!container) return;
+
+    try {
+        const fetches = POC_TITLES.map(t => {
+            const action = t.type === 'tv' ? 'tv' : 'movie';
+            return fetchTMDB(action, { id: t.tmdb_id }).then(data => ({ ...data, _pocType: t.type }));
+        });
+
+        const results = await Promise.all(fetches);
+
+        let html = '';
+        results.forEach(item => {
+            if (item.error || item.status_code === 34) return;
+
+            const title = item.title || item.name || 'Unknown';
+            const poster = item.poster_path ? `${IMG_BASE}w300${item.poster_path}` : '';
+            const year = (item.release_date || item.first_air_date || '').split('-')[0];
+            const rating = item.vote_average ? item.vote_average.toFixed(1) : '';
+            const isTV = item._pocType === 'tv';
+            const link = isTV
+                ? `movie.php?id=${item.id}&type=tv`
+                : `movie.php?id=${item.id}`;
+            const typeBadge = isTV
+                ? '<span class="media-type-badge tv-badge">TV</span>'
+                : '';
+
+            html += `
+                <div class="movie-card poc-card">
+                    <a href="${link}" class="movie-poster">
+                        ${poster
+                            ? `<img src="${poster}" alt="${title}" loading="lazy">`
+                            : '<div class="poster-placeholder"><i class="fas fa-film"></i></div>'}
+                        <div class="movie-card-overlay">
+                            <div class="movie-card-rating"><i class="fas fa-star"></i> ${rating}</div>
+                            ${typeBadge}
+                            <span class="movie-card-view">View Details</span>
+                        </div>
+                        <div class="poc-stream-badge">
+                            <i class="fas fa-play"></i> WATCH NOW
+                        </div>
+                    </a>
+                    <p class="movie-card-title">${title}</p>
+                    <p class="movie-card-meta">${year} · <i class="fas fa-server" style="font-size:0.7rem;"></i> Jellyfin</p>
+                </div>`;
+        });
+
+        container.innerHTML = html || '<p class="text-muted">No streamable content configured.</p>';
+    } catch(e) {
+        container.innerHTML = '<p class="text-muted">Failed to load streamable content.</p>';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Load PoC row first (most prominent)
+    loadPocRow();
+
     // Load hero from trending
     try {
         const trending = await fetchTMDB('trending');
