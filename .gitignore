@@ -14,6 +14,10 @@ Thumbs.db
 .env
 *.env
 
+# Config files with secrets (use *.example.php as templates)
+app/config/config.php
+app/config/jellyfin_config.php
+
 # Database
 *.sql.backup
 
